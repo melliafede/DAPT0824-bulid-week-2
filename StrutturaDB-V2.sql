@@ -16,6 +16,7 @@ CREATE TABLE Stores (
 CREATE TABLE Category (
 	ID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50),
+    Description TEXT NOT NULL,
     RestockLevel INT
 );
 
@@ -27,15 +28,12 @@ CREATE TABLE Product (
     FOREIGN KEY (CategoryID) REFERENCES Category(ID)
 );
 
-
-
 CREATE TABLE Sales (
-	ID INT AUTO_INCREMENT,
+	ID INT,
 	StoreID INT,
     LineID	INT,
     ProductID INT,
     Quantity INT,
-    TotalPrice DECIMAL(10,2),
     PRIMARY KEY (ID, StoreID, LineID),
     FOREIGN KEY (StoreID) REFERENCES Stores(ID),
     FOREIGN KEY (ProductID) REFERENCES Product(ID)
