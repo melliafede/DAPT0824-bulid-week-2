@@ -65,9 +65,9 @@ AND WarehouseID = (	SELECT Warehouses.ID FROM Warehouses
 					WHERE Sales.ID = 14 LIMIT 1);
                     
 
--- Creazione di un trigger automatico
+-- Creazione di un trigger automatico per aggiornamento magazzino
 
-DELIMITER //								 	-- Serve a modificare temporaneamente il simbolo che indica il termine di un comando, così che SQL non interpreti ; come la fine del comando ma usi //
+DELIMITER $$								 	-- Serve a modificare temporaneamente il simbolo che indica il termine di un comando, così che SQL non interpreti ; come la fine del comando ma usi $$
 CREATE TRIGGER update_stock_after_insert 		-- Definiamo un trigger con un nome
 AFTER INSERT ON Sales 							-- Il trigger si attiverà ogni volta che viene effettuata una insert nella tabella Sales
 FOR EACH ROW 									-- Il trigger verrà eseguito per ogni riga inserita nella tabella Sales
@@ -76,14 +76,13 @@ BEGIN											-- Identifica l'inizio del blocco di istruzioni
     SET Stock = Stock - NEW.Quantity			-- NEW.Quantity identifica la quantità appena inserita nella tabella Sales nella riga per cui si è stato attivato il trigger
     WHERE ProductID = NEW.ProductID				-- NEW.ProductID identifica l'ID del prodotto appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
     AND WarehouseID = (							
-		SELECT Warehouses.ID					-- Subquery per recuperare il magazzino correlato allo store che è stato inserito nella vendita
-        FROM Warehouses
-        JOIN Stores ON Warehouses.ID = Stores.WarehouseID
-        WHERE Stores.ID = NEW.StoreID			-- NEW.StoreID identifica l'ID dello store appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
+		SELECT WarehouseID					-- Subquery per recuperare il magazzino correlato allo store che è stato inserito nella vendita
+        FROM Stores
+        WHERE ID = NEW.StoreID			-- NEW.StoreID identifica l'ID dello store appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
         LIMIT 1
 	);
 END;											-- Fine del blocco di istruzioni
-//												-- Delimitatore di fine comando temporaneo impostato prima
+$$												-- Delimitatore di fine comando temporaneo impostato prima
 DELIMITER ; -- Ripristina il delimitatore di fine comando a ;
 
 -- Verifichiamo stock pre-vendita
@@ -96,6 +95,45 @@ INSERT INTO Sales (ID, StoreID, LineID, ProductID, Quantity) VALUES
 
 -- Verifichiamo lo stock post-vendita
 SELECT * FROM StockLevels;
+
+-- 2 - Quali sono le query da eseguire per verificare quante unità di un prodotto ci sono in un dato magazzino e per monitorare le soglie di restock?
+-- Per verificare quante unità di prodotto (ID 1) ci sono nel magazzino (ID 2)
+SELECT Product.Name AS NomeProdotto, Warehouses.ID AS CodiceMagazzino, StockLevels.Stock, Category.RestockLevel AS SogliaDiRestock
+FROM Product JOIN StockLevels ON Product.ID = StockLevels.ProductID
+JOIN Warehouses ON Warehouses.ID = StockLevels.WarehouseID
+JOIN Category ON Product.CategoryID = Category.ID
+WHERE Product.ID = 1 AND Warehouses.ID = 1;
+
+
+-- Creazione trigger per generazione allarme quando prodotto va sottosoglia
+DELIMITER $$
+
+CREATE TRIGGER check_stock_level
+AFTER UPDATE ON StockLevels
+FOR EACH ROW
+BEGIN
+	IF NEW.Stock < (SELECT Category.RestockLevel
+					FROM Category
+					JOIN Product ON Category.ID = Product.CategoryID
+                    WHERE Product.ID = NEW.ProductID) THEN
+		INSERT INTO StockAlerts (ProductID, AlertMessage, AlertDate)
+		VALUES (NEW.ProductID, "La quantità in stock è sottosoglia", NOW());
+	END IF;
+END;
+$$
+
+DELIMITER ;
+
+-- Riapprovigionamento stock
+UPDATE StockLevels
+SET Stock =	(SELECT Category.RestockLevel
+			 FROM Category
+             JOIN Product ON Category.ID = Product.CategoryID
+			 WHERE Product.ID = StockLevels.ProductID)
+WHERE ProductID IN (SELECT ProductID FROM StockAlerts) AND Stock < (SELECT Category.RestockLevel
+																	FROM Category
+																	JOIN Product ON Category.ID = Product.CategoryID
+																	WHERE Product.ID = StockLevels.ProductID);
 
 
     

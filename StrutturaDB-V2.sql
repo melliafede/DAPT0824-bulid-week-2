@@ -47,3 +47,12 @@ CREATE TABLE StockLevels (
     FOREIGN KEY (ProductID) REFERENCES Product(ID),
     FOREIGN KEY (WarehouseID) REFERENCES Warehouses(ID)
 );
+
+-- Creazione tabella allarmi sottosoglia
+CREATE TABLE StockAlerts (
+	ID INT AUTO_INCREMENT PRIMARY KEY,
+    ProductID INT,
+    AlertMessage TEXT,
+    AlertDate DATE,
+    FOREIGN KEY (ProductID) REFERENCES Product(ID)
+);
