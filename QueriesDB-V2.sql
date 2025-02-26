@@ -48,7 +48,7 @@ AND WarehouseID = (	SELECT Warehouses.ID FROM Warehouses
 SELECT StockLevels.ProductID 
 FROM StockLevels JOIN Warehouses ON StockLevels.WarehouseID = Warehouses.ID
 JOIN Stores ON Stores.WarehouseID = Warehouses.ID
-WHERE Stores.ID = 5;
+WHERE Stores.ID = 2;
 
 -- Vengono venduti i prodotti 4 e 6
 INSERT INTO Sales (ID, StoreID, LineID, ProductID, Quantity) VALUES
@@ -63,8 +63,39 @@ AND WarehouseID = (	SELECT Warehouses.ID FROM Warehouses
 					JOIN Stores ON Warehouses.ID = Stores.WarehouseID
 					JOIN Sales ON Stores.ID = Sales.StoreID
 					WHERE Sales.ID = 14 LIMIT 1);
+                    
 
+-- Creazione di un trigger automatico
 
+DELIMITER //								 	-- Serve a modificare temporaneamente il simbolo che indica il termine di un comando, così che SQL non interpreti ; come la fine del comando ma usi //
+CREATE TRIGGER update_stock_after_insert 		-- Definiamo un trigger con un nome
+AFTER INSERT ON Sales 							-- Il trigger si attiverà ogni volta che viene effettuata una insert nella tabella Sales
+FOR EACH ROW 									-- Il trigger verrà eseguito per ogni riga inserita nella tabella Sales
+BEGIN											-- Identifica l'inizio del blocco di istruzioni
+	UPDATE StockLevels							-- Update utilizzato per diminuire lo stock
+    SET Stock = Stock - NEW.Quantity			-- NEW.Quantity identifica la quantità appena inserita nella tabella Sales nella riga per cui si è stato attivato il trigger
+    WHERE ProductID = NEW.ProductID				-- NEW.ProductID identifica l'ID del prodotto appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
+    AND WarehouseID = (							
+		SELECT Warehouses.ID					-- Subquery per recuperare il magazzino correlato allo store che è stato inserito nella vendita
+        FROM Warehouses
+        JOIN Stores ON Warehouses.ID = Stores.WarehouseID
+        WHERE Stores.ID = NEW.StoreID			-- NEW.StoreID identifica l'ID dello store appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
+        LIMIT 1
+	);
+END;											-- Fine del blocco di istruzioni
+//												-- Delimitatore di fine comando temporaneo impostato prima
+DELIMITER ; -- Ripristina il delimitatore di fine comando a ;
+
+-- Verifichiamo stock pre-vendita
+SELECT * FROM StockLevels;
+
+-- Effetuiamo una vendita
+INSERT INTO Sales (ID, StoreID, LineID, ProductID, Quantity) VALUES
+(17, 2, 1, 1, 10),
+(17, 2, 2, 2, 5);
+
+-- Verifichiamo lo stock post-vendita
+SELECT * FROM StockLevels;
 
 
     
