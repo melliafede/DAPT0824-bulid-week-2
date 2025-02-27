@@ -79,30 +79,50 @@ BEGIN											-- Identifica l'inizio del blocco di istruzioni
 		SELECT WarehouseID					-- Subquery per recuperare il magazzino correlato allo store che è stato inserito nella vendita
         FROM Stores
         WHERE ID = NEW.StoreID			-- NEW.StoreID identifica l'ID dello store appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
-        LIMIT 1
-	);
+    );
 END;											-- Fine del blocco di istruzioni
 $$												-- Delimitatore di fine comando temporaneo impostato prima
+
 DELIMITER ; -- Ripristina il delimitatore di fine comando a ;
+
+SHOW TRIGGERS;
+DROP TRIGGER update_stock_after_insert;
 
 -- Verifichiamo stock pre-vendita
 SELECT * FROM StockLevels;
 
 -- Effetuiamo una vendita
 INSERT INTO Sales (ID, StoreID, LineID, ProductID, Quantity) VALUES
-(17, 2, 1, 1, 10),
-(17, 2, 2, 2, 5);
+(20, 2, 1, 1, 10);
 
 -- Verifichiamo lo stock post-vendita
 SELECT * FROM StockLevels;
 
 -- 2 - Quali sono le query da eseguire per verificare quante unità di un prodotto ci sono in un dato magazzino e per monitorare le soglie di restock?
--- Per verificare quante unità di prodotto (ID 1) ci sono nel magazzino (ID 2)
-SELECT Product.Name AS NomeProdotto, Warehouses.ID AS CodiceMagazzino, StockLevels.Stock, Category.RestockLevel AS SogliaDiRestock
-FROM Product JOIN StockLevels ON Product.ID = StockLevels.ProductID
-JOIN Warehouses ON Warehouses.ID = StockLevels.WarehouseID
-JOIN Category ON Product.CategoryID = Category.ID
-WHERE Product.ID = 1 AND Warehouses.ID = 1;
+-- Per verificare quante unità di prodotto (ID 1) ci sono nel magazzino (ID 1)
+CREATE VIEW RestockNeed AS
+SELECT 
+    Category.Name AS CategoryName,
+    SUM(stocklevels.Stock) AS TotalStockInWarehouses,
+    Category.RestockLevel AS RestockLevel,
+    (Category.RestockLevel - SUM(StockLevels.Stock)) AS NeedForRestock
+FROM 
+    Category
+JOIN 
+    Product ON Category.ID = Product.CategoryID
+JOIN 
+    StockLevels ON Product.ID = StockLevels.ProductID
+GROUP BY 
+    Category.ID;
+    
+SELECT * FROM RestockNeed;
+
+
+CREATE VIEW VistaRestockProdotto AS
+	SELECT Product.Name AS NomeProdotto, Warehouses.ID AS CodiceMagazzino, StockLevels.Stock, Category.RestockLevel AS SogliaDiRestock
+	FROM Product JOIN StockLevels ON Product.ID = StockLevels.ProductID
+	JOIN Warehouses ON Warehouses.ID = StockLevels.WarehouseID
+	JOIN Category ON Product.CategoryID = Category.ID;
 
 
 -- Creazione trigger per generazione allarme quando prodotto va sottosoglia
