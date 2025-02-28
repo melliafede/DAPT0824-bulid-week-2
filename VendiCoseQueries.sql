@@ -49,7 +49,60 @@ WHERE ProductID IN (SELECT ProductID FROM StockAlerts) AND Stock < (SELECT Categ
 SELECT * FROM VistaRestockProdotto WHERE CodiceProdotto = "A1X3Y9" AND CodiceMagazzino = 2;
 
 -- ------------------
--- ------------------
+-- !!! Vendita 1005 !!!
+-- -------------------
+-- Quali stores sono presenti a Milano
+CREATE VIEW AnagraficaSupermercati AS
+SELECT Stores.Name AS NomeSupermercato, Stores.Location AS IndirizzoSupermercato , Stores.ID AS CodiceSupermercato, Warehouses.ID AS CodiceMagazzino
+FROM Stores JOIN Warehouses ON Stores.WarehouseID = Warehouses.ID;
+-- WHERE Stores.Location LIKE "Milano%";
+
+-- Quali prodotti ci sono nel magazzino associato all'esselunga 'ST1542'
+CREATE VIEW AnagraficaProdottiMagazzino AS
+SELECT StockLevel.ProductID AS CodiceProdotto, Product.Name AS NomeProdotto, Category.Name AS NomeCategoria, Stores.ID AS CodiceSupermercato ,  StockLevel.Stock AS Stock, Category.RestockLevel AS LivelloRestock
+FROM StockLevel JOIN Warehouses ON StockLevel.WarehouseID = Warehouses.ID
+JOIN Product ON Product.ID = StockLevel.ProductID
+JOIN Stores ON Stores.WarehouseID = Warehouses.ID
+JOIN Category ON Category.ID = Product.CategoryID;
+-- WHERE Stores.ID = 'ST1542';
+
+SELECT * FROM anagraficasupermercati
+WHERE IndirizzoSUpermercato LIKE "Milano%";
+
+SELECT * FROM anagraficaprodottimagazzino
+WHERE CodiceSupermercato = 'ST1542';
+
+-- Vendita di mele golden e pere williams 'D3L7M2'
+-- Eseguiamo una vendita per questo prodotto
+INSERT INTO Sales (StoreID, SalesID, LineID, ProductID, Quantity, UnitPrice, PaymentMethod)
+VALUES
+('ST1542', 1006, 1, 'A1X3Y9', 101, 1.89, 'Debit Card'),
+('ST1542', 1006, 2, 'D3L7M2', 95, 1.89, 'Debit Card');
+
+SELECT * FROM anagraficaprodottimagazzino
+WHERE CodiceSupermercato = 'ST1542' AND CodiceProdotto in ('A1X3Y9','D3L7M2')  ;
+
+SELECT * FROM Sales;
+
+SELECT * FROM stockalerts;
+
+-- Riapprovigionamento stock dei prodotti sottosoglia
+UPDATE StockLevel
+SET Stock =	(SELECT Category.RestockLevel
+			 FROM Category
+             JOIN Product ON Category.ID = Product.CategoryID
+			 WHERE Product.ID = StockLevel.ProductID) + 100
+WHERE ProductID IN (SELECT ProductID FROM StockAlerts) AND Stock < (SELECT Category.RestockLevel
+																	FROM Category
+																	JOIN Product ON Category.ID = Product.CategoryID
+																	WHERE Product.ID = StockLevel.ProductID);
+                                                                    
+SELECT * FROM anagraficaprodottimagazzino
+WHERE CodiceSupermercato = 'ST1542' AND CodiceProdotto in ('A1X3Y9','D3L7M2')  ;
+
+
+
+
 
 
                                                                     
