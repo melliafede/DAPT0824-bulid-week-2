@@ -9,7 +9,7 @@ CREATE TABLE Warehouses (
 	Location VARCHAR(20),
 	Email VARCHAR(45),
 	PhoneNo VARCHAR(15)
-    );
+);
 
 -- Creazione tabella categoria
 CREATE TABLE Category (
@@ -27,7 +27,7 @@ CREATE TABLE Product (
     Description TEXT,
     MaxUnitSalesPrice DECIMAL(10,2),
     FOREIGN KEY (CategoryID) REFERENCES Category(ID)
-    );
+);
 
 -- Creazione tabella Stock presente in magazzino 
 CREATE TABLE StockLevel (
@@ -65,7 +65,7 @@ CREATE TABLE Sales (
     PRIMARY KEY (SalesID, LineID),
     FOREIGN KEY (StoreID) REFERENCES Stores(ID),
     FOREIGN KEY (ProductID) REFERENCES Product(ID)
-    );
+);
 
 -- Popolazione tabella magazzini
 INSERT INTO Warehouses (Name, Location, Email, PhoneNo) 
@@ -383,6 +383,7 @@ VALUES
 
 -- Creazione trigger per aggiornamento stock magazzino
 DELIMITER $$								 	-- Serve a modificare temporaneamente il simbolo che indica il termine di un comando, così che SQL non interpreti ; come la fine del comando ma usi $$
+
 CREATE TRIGGER update_stock_after_insert 		-- Definiamo un trigger con un nome
 AFTER INSERT ON Sales 							-- Il trigger si attiverà ogni volta che viene effettuata una insert nella tabella Sales
 FOR EACH ROW 									-- Il trigger verrà eseguito per ogni riga inserita nella tabella Sales
@@ -434,6 +435,12 @@ $$
 DELIMITER ;
 
 SHOW TRIGGERS;
+
+CREATE VIEW VistaRestockProdotto AS
+	SELECT Product.Name AS NomeProdotto, Product.ID AS CodiceProdotto, Warehouses.ID AS CodiceMagazzino, StockLevel.Stock, Category.RestockLevel AS SogliaDiRestock
+	FROM Product JOIN StockLevel ON Product.ID = StockLevel.ProductID
+	JOIN Warehouses ON Warehouses.ID = StockLevel.WarehouseID
+	JOIN Category ON Product.CategoryID = Category.ID;
 
 
 
