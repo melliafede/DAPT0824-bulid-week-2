@@ -49,7 +49,7 @@ WHERE ProductID IN (SELECT ProductID FROM StockAlerts) AND Stock < (SELECT Categ
 SELECT * FROM VistaRestockProdotto WHERE CodiceProdotto = "A1X3Y9" AND CodiceMagazzino = 2;
 
 -- ------------------
--- !!! Vendita 1005 !!!
+-- !!! Vendita 1008 !!!
 -- -------------------
 -- Quali stores sono presenti a Milano
 CREATE VIEW AnagraficaSupermercati AS
@@ -76,8 +76,8 @@ WHERE CodiceSupermercato = 'ST1542';
 -- Eseguiamo una vendita per questo prodotto
 INSERT INTO Sales (StoreID, SalesID, LineID, ProductID, Quantity, UnitPrice, PaymentMethod)
 VALUES
-('ST1542', 1006, 1, 'A1X3Y9', 101, 1.89, 'Debit Card'),
-('ST1542', 1006, 2, 'D3L7M2', 95, 1.89, 'Debit Card');
+('ST1542', 1008, 1, 'A1X3Y9', 50, 1.89, 'Debit Card'),
+('ST1542', 1008, 2, 'D3L7M2', 30, 1.89, 'Debit Card');
 
 SELECT * FROM anagraficaprodottimagazzino
 WHERE CodiceSupermercato = 'ST1542' AND CodiceProdotto in ('A1X3Y9','D3L7M2')  ;
