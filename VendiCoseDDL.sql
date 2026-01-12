@@ -436,14 +436,71 @@ DELIMITER ;
 
 SHOW TRIGGERS;
 
+-- Visulizzazione stock prodotto in magazzino e livello restock
 CREATE VIEW VistaRestockProdotto AS
 	SELECT Product.Name AS NomeProdotto, Product.ID AS CodiceProdotto, Warehouses.ID AS CodiceMagazzino, StockLevel.Stock, Category.RestockLevel AS SogliaDiRestock
 	FROM Product JOIN StockLevel ON Product.ID = StockLevel.ProductID
 	JOIN Warehouses ON Warehouses.ID = StockLevel.WarehouseID
 	JOIN Category ON Product.CategoryID = Category.ID;
+ 
+-- --------------------
+-- GESTIONE STOCK STORES
+-- --------------------
+-- Creazione tabella stock negozio
+CREATE TABLE StoreStockLevel (
+	ProductID VARCHAR(10),
+    StoreID VARCHAR(7),
+	Stock INT,				-- Quantità attualmente presente nel negozio
+    LastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
+SHOW TRIGGERS;
+DROP TRIGGER update_stock_after_insert;
+DROP TRIGGER check_stock_level;
 
+-- Creazione trigger per aggiornamento stock magazzino
+DELIMITER $$								 	-- Serve a modificare temporaneamente il simbolo che indica il termine di un comando, così che SQL non interpreti ; come la fine del comando ma usi $$
 
+CREATE TRIGGER update_store_stock 		-- Definiamo un trigger con un nome
+AFTER INSERT ON Sales 							-- Il trigger si attiverà ogni volta che viene effettuata una insert nella tabella Sales
+FOR EACH ROW 									-- Il trigger verrà eseguito per ogni riga inserita nella tabella Sales
+BEGIN											-- Identifica l'inizio del blocco di istruzioni
+	UPDATE StoreStockLevel							-- Update utilizzato per diminuire lo stock
+    SET Stock = Stock - NEW.Quantity			-- NEW.Quantity identifica la quantità appena inserita nella tabella Sales nella riga per cui si è stato attivato il trigger
+    WHERE ProductID = NEW.ProductID				-- NEW.ProductID identifica l'ID del prodotto appena inserito nella tabella Sales nella riga per cui si è attivato il trigger
+    AND StoreID = NEW.StoreID;
+END;											-- Fine del blocco di istruzioni
+$$												-- Delimitatore di fine comando temporaneo impostato prima
+
+DELIMITER ; -- Ripristina il delimitatore di fine comando a ;
+
+SHOW TRIGGERS;
+
+-- Visulizzazione stock prodotto in magazzino e livello restock
+CREATE VIEW VistaStoreStock AS
+	SELECT Product.Name AS NomeProdotto, Product.ID AS CodiceProdotto, Stores.ID AS CodiceStore, StoreStockLevel.Stock, Category.RestockLevel AS SogliaDiRestock
+	FROM Product JOIN StoreStockLevel ON Product.ID = StoreStockLevel.ProductID
+	JOIN Stores ON Stores.ID = StoreStockLevel.StoreID
+	JOIN Category ON Product.CategoryID = Category.ID;
+
+-- Creazione trigger per generazione allarme quando prodotto va sottosoglia
+DELIMITER $$
+
+CREATE TRIGGER check_store_stock_level
+AFTER UPDATE ON StoreStockLevel
+FOR EACH ROW
+BEGIN
+	IF NEW.Stock < (SELECT Category.RestockLevel
+					FROM Category
+					JOIN Product ON Category.ID = Product.CategoryID
+                    WHERE Product.ID = NEW.ProductID) THEN
+		INSERT INTO StockAlerts (ProductID, WarehouseID, AlertMessage)
+		VALUES (NEW.ProductID, NEW.StoreID , "La quantità in stock è sottosoglia");
+	END IF;
+END;
+$$
+
+DELIMITER ;
 
 
 

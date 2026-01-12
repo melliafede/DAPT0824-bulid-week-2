@@ -1,6 +1,3 @@
--- 2 - Quali sono le query da eseguire per verificare quante unità di un prodotto ci sono in un dato magazzino e per monitorare le soglie di restock?
--- Per verificare quante unità di prodotto (ID 1) ci sono nel magazzino (ID 1)
-
 -- ------------------
 -- !!! Vendita 1001 !!!
 -- -------------------
@@ -50,6 +47,38 @@ SELECT * FROM VistaRestockProdotto WHERE CodiceProdotto = "A1X3Y9" AND CodiceMag
 
 -- ------------------
 -- ------------------
+
+-- ------------------
+-- !!! Vendita 1002 !!!
+-- -------------------
+
+-- Eseguiamo una vendita 
+INSERT INTO Sales (StoreID, SalesID, LineID, ProductID, Quantity, UnitPrice, PaymentMethod)
+VALUES
+('ST3474', 1002, 1, 'A1X3Y9', 10, 1.89, 'Debit Card');
+
+-- Controlliamo vendita generata
+SELECT * FROM Sales;
+
+-- Ricontrolliamo stock
+SELECT * FROM VistaStoreStock WHERE CodiceProdotto = "A1X3Y9" AND CodiceStore = "ST3474";
+
+-- Verifichiamo se ci sono allarmi di prodotti sottosoglia
+SELECT * FROM StockAlerts;
+
+-- Riapprovigionamento stock dei prodotti sottosoglia
+UPDATE StockLevel
+SET Stock =	(SELECT Category.RestockLevel
+			 FROM Category
+             JOIN Product ON Category.ID = Product.CategoryID
+			 WHERE Product.ID = StockLevel.ProductID) + 100
+WHERE ProductID IN (SELECT ProductID FROM StockAlerts) AND Stock < (SELECT Category.RestockLevel
+																	FROM Category
+																	JOIN Product ON Category.ID = Product.CategoryID
+																	WHERE Product.ID = StockLevel.ProductID);
+                                                                    
+-- Ricontrolliamo lo stock
+SELECT * FROM VistaRestockProdotto WHERE CodiceProdotto = "A1X3Y9" AND CodiceMagazzino = 2;
 
 
                                                                     
